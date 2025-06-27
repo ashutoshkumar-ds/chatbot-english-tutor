@@ -24,16 +24,25 @@
     <h3 class="text-center">💬 English Grammar Chatbot</h3>
     <div id="chat-box" class="mb-3"></div>
 
-    <div class="input-group">
+    <div class="input-group mb-2">
       <input type="text" id="userInput" class="form-control" placeholder="Type or speak...">
-      <button class="btn btn-outline-secondary" onclick="startSpeech()">🎤</button>
+      <button class="btn btn-outline-secondary" onclick="startSpeech()">🎤 Speak</button>
       <button class="btn btn-primary" onclick="sendMessage()">Send</button>
+    </div>
+
+    <div class="d-flex justify-content-center gap-2">
+      <button class="btn btn-sm btn-outline-primary" onclick="repeatBotReply()">🔁 Repeat Bot</button>
+      <button class="btn btn-sm btn-outline-secondary" onclick="repeatUserAudio()">🔂 Replay My Voice</button>
     </div>
   </div>
 
   <script>
     let recognition;
     let chatBox = document.getElementById("chat-box");
+    let lastBotReply = "";
+    let recordedBlob = null;
+    let mediaRecorder = null;
+    let audioChunks = [];
 
     function appendMessage(text, sender) {
       const p = document.createElement("p");
@@ -41,18 +50,73 @@
       p.innerText = text;
       chatBox.appendChild(p);
       chatBox.scrollTop = chatBox.scrollHeight;
+
+      if (sender === "bot") {
+        lastBotReply = text;
+        speakText(text);
+      }
     }
 
-    function startSpeech() {
+    function speakText(text) {
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = "en-IN";
+      utterance.rate = 0.95;
+      speechSynthesis.speak(utterance);
+    }
+
+    function repeatBotReply() {
+      if (lastBotReply) speakText(lastBotReply);
+    }
+
+    async function startSpeech() {
+      recordedBlob = null;
+      audioChunks = [];
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        recordedBlob = new Blob(audioChunks, { type: "audio/webm" });
+      };
+      mediaRecorder.start();
+
       recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = "en-IN";
       recognition.interimResults = false;
+
+      let silenceTimer;
+
       recognition.onresult = function(event) {
+        clearTimeout(silenceTimer);
         const text = event.results[0][0].transcript;
         document.getElementById("userInput").value = text;
         sendMessage();
+        mediaRecorder.stop();
       };
+
+      recognition.onerror = function(event) {
+        console.error("Speech error:", event.error);
+        mediaRecorder.stop();
+      };
+
+      recognition.onend = function() {
+        if (!mediaRecorder || mediaRecorder.state !== "inactive") {
+          mediaRecorder.stop();
+        }
+      };
+
       recognition.start();
+
+      silenceTimer = setTimeout(() => {
+        recognition.stop();
+      }, 3000); // Stop after 3 seconds of silence
+    }
+
+    function repeatUserAudio() {
+      if (recordedBlob) {
+        const audio = new Audio(URL.createObjectURL(recordedBlob));
+        audio.play();
+      }
     }
 
     async function sendMessage() {
@@ -63,14 +127,19 @@
       appendMessage(message, "user");
       input.value = "";
 
-      const res = await fetch("http://127.0.0.1:5000/chat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ text: message })
-      });
+      try {
+        const res = await fetch("http://127.0.0.1:5000/chat", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ text: message })
+        });
 
-      const data = await res.json();
-      appendMessage(data.reply, "bot");
+        const data = await res.json();
+        appendMessage(data.reply, "bot");
+      } catch (err) {
+        console.error("Server error:", err);
+        appendMessage("❌ Error connecting to server", "bot");
+      }
     }
   </script>
 </body>
