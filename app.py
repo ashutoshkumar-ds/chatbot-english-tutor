@@ -4,9 +4,12 @@ import openai
 import os
 from dotenv import load_dotenv
 
+# Load .env for local development
 load_dotenv()
+
+# Set API key using environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-client = openai.OpenAI(api_key=api_key) 
+client = openai.OpenAI(api_key=api_key)
 
 app = Flask(__name__)
 CORS(app)
@@ -34,11 +37,14 @@ conversation_history = [
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        user_input = request.json["text"]
+        user_input = request.json.get("text", "").strip()
+        if not user_input:
+            return jsonify({"reply": "⚠️ I didn't catch anything. Please say something."})
+
         conversation_history.append({"role": "user", "content": user_input})
 
         response = client.chat.completions.create(
-            model="gpt-4o",  # Change to gpt-3.5-turbo if preferred
+            model="gpt-4o",  # or "gpt-3.5-turbo" if preferred
             temperature=0.7,
             messages=conversation_history
         )
@@ -53,5 +59,4 @@ def chat():
         return jsonify({"reply": "Sorry, something went wrong."}), 500
 
 if __name__ == "__main__":
-    # app.run(debug=True)
     app.run(host="0.0.0.0", port=8000)
