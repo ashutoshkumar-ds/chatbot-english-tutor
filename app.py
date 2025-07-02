@@ -1,20 +1,19 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import openai
 import os
 from dotenv import load_dotenv
 
-# Load .env for local development
 load_dotenv()
 
-# Set API key using environment variable
+# Load OpenAI key from environment variable
 api_key = os.getenv("OPENAI_API_KEY")
-client = openai.OpenAI(api_key=api_key)
+openai.api_key = api_key
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path="", static_folder=".")
 CORS(app)
 
-# Global conversation history
+# System prompt
 conversation_history = [
     {
         "role": "system",
@@ -34,17 +33,20 @@ conversation_history = [
     }
 ]
 
+# Homepage route to serve the UI
+@app.route("/")
+def index():
+    return send_from_directory(".", "index.html")
+
+# API route for chat
 @app.route("/chat", methods=["POST"])
 def chat():
     try:
-        user_input = request.json.get("text", "").strip()
-        if not user_input:
-            return jsonify({"reply": "⚠️ I didn't catch anything. Please say something."})
-
+        user_input = request.json["text"]
         conversation_history.append({"role": "user", "content": user_input})
 
-        response = client.chat.completions.create(
-            model="gpt-4o",  # or "gpt-3.5-turbo" if preferred
+        response = openai.ChatCompletion.create(
+            model="gpt-4o",
             temperature=0.7,
             messages=conversation_history
         )
@@ -53,12 +55,11 @@ def chat():
         conversation_history.append({"role": "assistant", "content": bot_reply})
 
         return jsonify({"reply": bot_reply})
-
     except Exception as e:
         print("❌ ERROR:", e)
         return jsonify({"reply": "Sorry, something went wrong."}), 500
 
+# Production-ready host
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8000)
-
 
