@@ -70,7 +70,9 @@ def chat():
         print("❌ ERROR:", e)
         return jsonify({"reply": "Sorry, something went wrong."}), 500
 
-# Production-ready host
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8000)
+    import os
+    port = int(os.environ.get("PORT", 8080))  # default to 8080 for Railway
+    app.run(host="0.0.0.0", port=port)
+
 
