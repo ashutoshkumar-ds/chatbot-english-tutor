@@ -45,8 +45,18 @@ def chat():
         user_input = request.json["text"]
         conversation_history.append({"role": "user", "content": user_input})
 
-        response = openai.ChatCompletion.create(
-            model="gpt-4o",
+        # response = openai.ChatCompletion.create(
+        #     model="gpt-4o",
+        #     temperature=0.7,
+        #     messages=conversation_history
+        # )
+
+        import openai
+
+        client = openai.OpenAI(api_key=api_key)
+
+        response = client.chat.completions.create(
+            model="gpt-4o",  # or gpt-3.5-turbo
             temperature=0.7,
             messages=conversation_history
         )
