@@ -104,9 +104,41 @@
       }
     }
 
+    // function speakText(text) {
+    //   const utterance = new SpeechSynthesisUtterance(text);
+    //   utterance.lang = "en-IN";
+    //   utterance.rate = 0.95;
+    //   speechSynthesis.speak(utterance);
+    // }
+
+
+    let voices = [];
+
+    function populateVoices() {
+      voices = window.speechSynthesis.getVoices();
+      const select = document.getElementById("voiceSelect");
+      select.innerHTML = "";
+      voices.forEach((voice, index) => {
+        const option = document.createElement("option");
+        option.value = index;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        select.appendChild(option);
+      });
+    }
+
+    window.speechSynthesis.onvoiceschanged = populateVoices;
+
     function speakText(text) {
       const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = "en-IN";
+      const selectedIndex = document.getElementById("voiceSelect").value;
+      if (voices[selectedIndex]) {
+        utterance.voice = voices[selectedIndex];
+      } else {
+        // Fallback to Samantha if nothing selected
+        const defaultVoice = voices.find(v => v.name === "Samantha");
+        if (defaultVoice) utterance.voice = defaultVoice;
+      }
+      utterance.lang = "en-US";
       utterance.rate = 0.95;
       speechSynthesis.speak(utterance);
     }
@@ -150,7 +182,7 @@
         }
         silenceTimer = setTimeout(() => {
           recognition.stop();
-        }, 3000);
+        }, 2000);
       };
 
       recognition.onend = function () {
