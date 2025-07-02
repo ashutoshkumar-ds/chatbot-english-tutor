@@ -112,21 +112,6 @@
     // }
 
 
-    let voices = [];
-
-    function populateVoices() {
-      voices = window.speechSynthesis.getVoices();
-      const select = document.getElementById("voiceSelect");
-      select.innerHTML = "";
-      voices.forEach((voice, index) => {
-        const option = document.createElement("option");
-        option.value = index;
-        option.textContent = `${voice.name} (${voice.lang})`;
-        select.appendChild(option);
-      });
-    }
-
-    window.speechSynthesis.onvoiceschanged = populateVoices;
 
     function speakText(text) {
       const utterance = new SpeechSynthesisUtterance(text);
